@@ -27,10 +27,40 @@
   .rank-3 { color: #cd7f32; font-weight: bold; }
   .loading { text-align: center; color: #ff5722; padding: 20px; font-size: 14px; font-weight: bold; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+  
+  /* 通常の履歴アイテム */
   .history-item { border-bottom: 1px solid #333; padding: 12px 0; }
   .history-date { font-size: 12px; color: #888; margin-bottom: 5px; }
   .history-text { font-size: 16px; font-weight: bold; line-height: 1.4; }
   .highlight { color: #ffcc00; font-size: 18px; }
+  
+  /* 理事長専用：黄金のVIP演出（パチンコの大当たり風） */
+  .vip-match {
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #111;
+    border: 2px solid #fff;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.9);
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .vip-title {
+    font-size: 14px;
+    font-weight: 900;
+    color: #d32f2f;
+    background: #fff;
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 5px;
+    margin-bottom: 8px;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+  }
+  .vip-match .history-date { color: #555; font-weight: bold; }
+  .vip-match .history-text { font-size: 18px; text-shadow: 1px 1px 0 rgba(255,255,255,0.5); }
+  .vip-match .highlight { color: #d32f2f; font-size: 22px; font-weight: 900; }
+  
   .rule-box { background: #222; padding: 15px; border-left: 4px solid #ff5722; margin-bottom: 15px; border-radius: 4px; }
   .rule-title { color: #ffcc00; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
   .rule-text { font-size: 14px; line-height: 1.6; color: #ddd; }
@@ -116,13 +146,12 @@
 </div>
 
 <script>
-  // ※※ ここにあなたの GAS_URL を貼り直してください ※※
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbyF5Di65Jwkkdx2QaDq1_BjNJfIeFGjXoMnAuOusSDivXb3NO93bNpD8nfXLSFaV0w/exec";
+  // ※ ここにあなたの GAS_URL を貼り直してください
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxs14i_3Z5q6VAM_FM8MXdkRBMRqRdy1CyTy7M5cKFJddr1JUeX6tOlsnvdKqBFsxQ/exec";
   
   let ratings = {};
   let matchHistory = [];
 
-  // 実況アナウンサーの20種類のセリフ箱
   const winWords = [
     "を撃破！", "を粉砕！", "を圧倒！", "を討ち取り！", "をねじ伏せ！", 
     "を瞬殺！", "を爆砕！", "を蹴散らし！", "をなぎ倒し！", "を血祭りに上げ！", 
@@ -133,3 +162,173 @@
   window.onload = async () => {
     try {
       const response = await fetch(GAS_URL);
+      const data = await response.json();
+      ratings = data.ratings;
+      matchHistory = data.history || [];
+      
+      document.getElementById('loading-msg').style.display = 'none';
+      document.getElementById('input-area').style.display = 'block';
+      updateSelectBoxes();
+      updateRanking();
+      updateHistory();
+    } catch(e) {
+      alert("通信エラー：ネット接続を確認してください。");
+    }
+  };
+
+  function switchTab(tabName) {
+    document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active-tab'));
+
+    document.getElementById(tabName + '-page').classList.add('active');
+    
+    if (tabName === 'input') document.querySelectorAll('.tab')[0].classList.add('active-tab');
+    if (tabName === 'ranking') document.querySelectorAll('.tab')[1].classList.add('active-tab');
+    if (tabName === 'history') document.querySelectorAll('.tab')[2].classList.add('active-tab');
+    if (tabName === 'rule') document.querySelectorAll('.tab')[3].classList.add('active-tab');
+  }
+
+  function updateSelectBoxes() {
+    const boxA = document.getElementById('playerA');
+    const boxB = document.getElementById('playerB');
+    boxA.innerHTML = ''; boxB.innerHTML = '';
+    Object.keys(ratings).forEach(p => {
+      boxA.innerHTML += `<option value="${p}">${p}</option>`;
+      boxB.innerHTML += `<option value="${p}">${p}</option>`;
+    });
+    if(boxB.options.length > 1) boxB.selectedIndex = 1;
+  }
+
+  function changeScore(id, amount) {
+    let el = document.getElementById(id);
+    let score = parseInt(el.innerText) + amount;
+    if (score < 0) score = 0;
+    if (score > 3) score = 3; 
+    el.innerText = score;
+  }
+
+  async function recordMatch() {
+    const pA = document.getElementById('playerA').value;
+    const pB = document.getElementById('playerB').value;
+    const sA = parseInt(document.getElementById('scoreA').innerText);
+    const sB = parseInt(document.getElementById('scoreB').innerText);
+
+    if (pA === pB) { 
+      alert("【エラー】同じ選手が選ばれています！"); 
+      return; 
+    }
+    
+    // 【竹】のエラー修正：3対3の場合、およびどちらも3未満の場合を駅の改札のように弾く
+    if (sA === 3 && sB === 3) { 
+      alert("【警告】3対3はあり得ません！\n正しいスコアに直してから再度叩き込んでください。"); 
+      return; 
+    }
+    if (sA < 3 && sB < 3) { 
+      alert("【警告】3セット先取するまで決着はつきません！\n正しいスコアを入力してください。"); 
+      return; 
+    }
+
+    const winner = sA === 3 ? pA : pB;
+    const loser = sA === 3 ? pB : pA;
+    const rW = ratings[winner] || 1500;
+    const rL = ratings[loser] || 1500;
+
+    const expectedW = 1 / (1 + Math.pow(10, (rL - rW) / 400));
+    const pointChange = Math.round(32 * (1 - expectedW));
+
+    const randomWord = winWords[Math.floor(Math.random() * winWords.length)];
+
+    const btn = document.getElementById('submit-btn');
+    btn.innerText = "本部へ送信中...🔥";
+    btn.disabled = true;
+    btn.style.background = "#555";
+
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ winner: winner, loser: loser, pointChange: pointChange, randomWord: randomWord })
+      });
+      
+      const data = await res.json();
+      ratings = data.ratings;
+      matchHistory = data.history || [];
+      
+      alert(`🔥🔥 下剋上達成！ 🔥🔥\n\n${winner} が ${loser} ${randomWord}\n${pointChange}ポイントを強奪！`);
+      
+      document.getElementById('scoreA').innerText = '0';
+      document.getElementById('scoreB').innerText = '0';
+      updateRanking();
+      updateHistory();
+      switchTab('history'); 
+
+    } catch(e) {
+      alert("送信失敗！電波の届く場所でもう一度叩き込んでください。");
+    } finally {
+      btn.innerText = "結果を叩き込む";
+      btn.disabled = false;
+      btn.style.background = "linear-gradient(135deg, #b71c1c, #e53935)";
+    }
+  }
+
+  function updateRanking() {
+    const tbody = document.getElementById('ranking-table');
+    tbody.innerHTML = '';
+    const sorted = Object.entries(ratings).sort((a, b) => b[1] - a[1]);
+
+    sorted.forEach((player, index) => {
+      let rankClass = '';
+      let crown = '';
+      if (index === 0) { rankClass = 'rank-1'; crown = '👑 '; }
+      else if (index === 1) rankClass = 'rank-2';
+      else if (index === 2) rankClass = 'rank-3';
+
+      tbody.innerHTML += `
+        <tr>
+          <td class="${rankClass}">${crown}${index + 1}位</td>
+          <td style="font-weight:bold;">${player[0]}</td>
+          <td class="${rankClass}">${player[1]} pt</td>
+        </tr>
+      `;
+    });
+  }
+
+  function updateHistory() {
+    const list = document.getElementById('history-list');
+    list.innerHTML = '';
+    if(matchHistory.length === 0) {
+      list.innerHTML = '<div style="text-align:center; color:#888;">まだ激闘の記録はありません</div>';
+      return;
+    }
+    matchHistory.forEach(h => {
+      const word = h.word || "を撃破！";
+      
+      // 【松】の理事長VIP演出：勝者か敗者が理事長の場合
+      if (h.winner === "理事長" || h.loser === "理事長") {
+        list.innerHTML += `
+          <div class="history-item vip-match">
+            <div class="vip-title">👑【VIPマッチ】理事長 降臨！</div>
+            <div class="history-date">${h.date}</div>
+            <div class="history-text">
+              🔥 <span class="highlight">${h.winner}</span> が ${h.loser} ${word}<br>
+              <span style="color:#d32f2f; font-size:18px; font-weight:900;">(＋${h.point} pt 強奪)</span>
+            </div>
+          </div>
+        `;
+      } else {
+        list.innerHTML += `
+          <div class="history-item">
+            <div class="history-date">${h.date}</div>
+            <div class="history-text">
+              🔥 <span class="highlight">${h.winner}</span> が ${h.loser} ${word}<br>
+              <span style="color:#4CAF50; font-size:14px;">(＋${h.point} pt 強奪)</span>
+            </div>
+          </div>
+        `;
+      }
+    });
+  }
+</script>
+</body>
+</html>
