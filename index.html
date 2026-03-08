@@ -28,13 +28,11 @@
   .loading { text-align: center; color: #ff5722; padding: 20px; font-size: 14px; font-weight: bold; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
   
-  /* 通常の履歴アイテム */
   .history-item { border-bottom: 1px solid #333; padding: 12px 0; }
   .history-date { font-size: 12px; color: #888; margin-bottom: 5px; }
   .history-text { font-size: 16px; font-weight: bold; line-height: 1.4; }
   .highlight { color: #ffcc00; font-size: 18px; }
   
-  /* 理事長専用：黄金のVIP演出（パチンコの大当たり風） */
   .vip-match {
     background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
     color: #111;
@@ -116,22 +114,18 @@
 <div id="rule-page" class="container">
   <div class="card">
     <h3 style="text-align:center; color:#ff5722; margin-top:0; border-bottom: 2px solid #333; padding-bottom: 10px;">📜 FUJIYAMAの掟</h3>
-    
     <div class="rule-box">
       <div class="rule-title">① 全員1500ptスタート</div>
       <div class="rule-text">最初は全員同じ「1500ポイント」からスタート。試合はすべて「3セット先取」の真剣勝負で行う。</div>
     </div>
-
     <div class="rule-box">
       <div class="rule-title">② ポイント奪い合い</div>
       <div class="rule-text">勝者は敗者からポイントを「強奪」できる。負けた者はポイントを失い、順位が落ちる過酷なサバイバル。</div>
     </div>
-
     <div class="rule-box">
       <div class="rule-title">③ 格上を倒して下剋上！</div>
       <div class="rule-text">自分よりポイントが高い「格上」を倒すほど、一気に大量のポイントを強奪できる！逆に格下に負けるとゴッソリ減るため、エースも油断できない。</div>
     </div>
-    
     <div style="text-align:center; color:#888; font-size:12px; margin-top:20px;">
       頂点を目指し、ライバルを蹴散らせ！
     </div>
@@ -218,7 +212,6 @@
       return; 
     }
     
-    // 【竹】のエラー修正：3対3の場合、およびどちらも3未満の場合を駅の改札のように弾く
     if (sA === 3 && sB === 3) { 
       alert("【警告】3対3はあり得ません！\n正しいスコアに直してから再度叩き込んでください。"); 
       return; 
@@ -230,20 +223,28 @@
 
     const winner = sA === 3 ? pA : pB;
     const loser = sA === 3 ? pB : pA;
-    const rW = ratings[winner] || 1500;
-    const rL = ratings[loser] || 1500;
-
-    const expectedW = 1 / (1 + Math.pow(10, (rL - rW) / 400));
-    const pointChange = Math.round(32 * (1 - expectedW));
-
-    const randomWord = winWords[Math.floor(Math.random() * winWords.length)];
 
     const btn = document.getElementById('submit-btn');
-    btn.innerText = "本部へ送信中...🔥";
+    btn.innerText = "最新の戦況を確認中...📡";
     btn.disabled = true;
     btn.style.background = "#555";
 
     try {
+      // 【梅】送信ボタンを押した瞬間に、裏の黒板から最新データを取得して計算のズレを防ぐ
+      const checkRes = await fetch(GAS_URL);
+      const checkData = await checkRes.json();
+      ratings = checkData.ratings; 
+
+      const rW = ratings[winner] || 1500;
+      const rL = ratings[loser] || 1500;
+
+      const expectedW = 1 / (1 + Math.pow(10, (rL - rW) / 400));
+      const pointChange = Math.round(32 * (1 - expectedW));
+
+      const randomWord = winWords[Math.floor(Math.random() * winWords.length)];
+
+      btn.innerText = "本部へ送信中...🔥";
+
       const res = await fetch(GAS_URL, {
         method: 'POST',
         redirect: 'follow',
@@ -304,7 +305,6 @@
     matchHistory.forEach(h => {
       const word = h.word || "を撃破！";
       
-      // 【松】の理事長VIP演出：勝者か敗者が理事長の場合
       if (h.winner === "理事長" || h.loser === "理事長") {
         list.innerHTML += `
           <div class="history-item vip-match">
