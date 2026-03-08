@@ -351,4 +351,32 @@
       return;
     }
     matchHistory.forEach(h => {
-      const word = h.word ||
+      const word = h.word || "を撃破！";
+      
+      if (h.winner === "理事長" || h.loser === "理事長") {
+        list.innerHTML += `
+          <div class="history-item vip-match">
+            <div class="vip-title">👑【VIPマッチ】理事長 降臨！</div>
+            <div class="history-date">${h.date}</div>
+            <div class="history-text">
+              🔥 <span class="highlight">${h.winner}</span> が ${h.loser} ${word}<br>
+              <span style="color:#d32f2f; font-size:18px; font-weight:900;">(＋${h.point} pt 強奪)</span>
+            </div>
+          </div>
+        `;
+      } else {
+        list.innerHTML += `
+          <div class="history-item">
+            <div class="history-date">${h.date}</div>
+            <div class="history-text">
+              🔥 <span class="highlight">${h.winner}</span> が ${h.loser} ${word}<br>
+              <span style="color:#4CAF50; font-size:14px;">(＋${h.point} pt 強奪)</span>
+            </div>
+          </div>
+        `;
+      }
+    });
+  }
+</script>
+</body>
+</html>
