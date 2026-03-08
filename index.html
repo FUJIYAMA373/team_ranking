@@ -16,7 +16,7 @@
   .score-btn:active { background-color: #555; }
   .score-num { font-size: 40px; font-weight: 900; width: 50px; color: #ffcc00; text-shadow: 0 0 10px rgba(255, 204, 0, 0.5); }
   .submit-btn { background: linear-gradient(135deg, #b71c1c, #e53935); color: white; border: none; margin-top: 25px; padding: 18px; font-size: 20px; text-shadow: 1px 1px 3px rgba(0,0,0,0.6); box-shadow: 0 4px 15px rgba(229, 57, 53, 0.4); }
-  .tab-bar { position: fixed; bottom: 0; width: 100%; display: flex; background: #1a1a1a; border-top: 2px solid #333; }
+  .tab-bar { position: fixed; bottom: 0; width: 100%; display: flex; background: #1a1a1a; border-top: 2px solid #333; z-index: 999;}
   .tab { flex: 1; padding: 12px 2px; text-align: center; font-size: 12px; font-weight: bold; color: #888; transition: 0.3s; word-break: keep-all; }
   .tab.active-tab { color: #ff5722; border-bottom: 4px solid #ff5722; background: #2a2a2a; }
   table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 16px; }
@@ -62,11 +62,37 @@
   .rule-box { background: #222; padding: 15px; border-left: 4px solid #ff5722; margin-bottom: 15px; border-radius: 4px; }
   .rule-title { color: #ffcc00; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
   .rule-text { font-size: 14px; line-height: 1.6; color: #ddd; }
+
+  /* 右下に浮き続ける更新ボタン */
+  .reload-btn {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #ff8f00;
+    color: white;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    cursor: pointer;
+    z-index: 1000;
+    border: 2px solid #fff;
+    transition: transform 0.3s;
+  }
+  .reload-btn:active { transform: scale(0.9); }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
 <div class="header">🔥 TEAM FUJIYAMA 🔥<br><span style="font-size: 14px;">下剋上ランキング</span></div>
+
+<div id="reload-btn" class="reload-btn" onclick="forceReload()">🔄</div>
 
 <div id="input-page" class="container active">
   <div class="card">
@@ -201,6 +227,29 @@
     el.innerText = score;
   }
 
+  // 手動で最新データを引っ張ってくる機能（トランシーバー通信）
+  async function forceReload() {
+    const btn = document.getElementById('reload-btn');
+    btn.classList.add('spin'); // ボタンをくるくる回す
+    try {
+      const res = await fetch(GAS_URL);
+      const data = await res.json();
+      ratings = data.ratings;
+      matchHistory = data.history || [];
+      updateSelectBoxes();
+      updateRanking();
+      updateHistory();
+      
+      // 一瞬だけキラッとさせて完了を知らせる
+      btn.innerText = "✨";
+      setTimeout(() => { btn.innerText = "🔄"; }, 800);
+    } catch(e) {
+      alert("更新失敗：電波状況を確認してください");
+    } finally {
+      btn.classList.remove('spin');
+    }
+  }
+
   async function recordMatch() {
     const pA = document.getElementById('playerA').value;
     const pB = document.getElementById('playerB').value;
@@ -230,7 +279,6 @@
     btn.style.background = "#555";
 
     try {
-      // 【梅】送信ボタンを押した瞬間に、裏の黒板から最新データを取得して計算のズレを防ぐ
       const checkRes = await fetch(GAS_URL);
       const checkData = await checkRes.json();
       ratings = checkData.ratings; 
@@ -303,32 +351,4 @@
       return;
     }
     matchHistory.forEach(h => {
-      const word = h.word || "を撃破！";
-      
-      if (h.winner === "理事長" || h.loser === "理事長") {
-        list.innerHTML += `
-          <div class="history-item vip-match">
-            <div class="vip-title">👑【VIPマッチ】理事長 降臨！</div>
-            <div class="history-date">${h.date}</div>
-            <div class="history-text">
-              🔥 <span class="highlight">${h.winner}</span> が ${h.loser} ${word}<br>
-              <span style="color:#d32f2f; font-size:18px; font-weight:900;">(＋${h.point} pt 強奪)</span>
-            </div>
-          </div>
-        `;
-      } else {
-        list.innerHTML += `
-          <div class="history-item">
-            <div class="history-date">${h.date}</div>
-            <div class="history-text">
-              🔥 <span class="highlight">${h.winner}</span> が ${h.loser} ${word}<br>
-              <span style="color:#4CAF50; font-size:14px;">(＋${h.point} pt 強奪)</span>
-            </div>
-          </div>
-        `;
-      }
-    });
-  }
-</script>
-</body>
-</html>
+      const word = h.word ||
