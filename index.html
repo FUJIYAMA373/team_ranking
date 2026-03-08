@@ -63,7 +63,6 @@
   .rule-title { color: #ffcc00; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
   .rule-text { font-size: 14px; line-height: 1.6; color: #ddd; }
 
-  /* 右下に浮き続ける更新ボタン */
   .reload-btn {
     position: fixed;
     bottom: 80px;
@@ -166,7 +165,7 @@
 </div>
 
 <script>
-  // ※ ここにあなたの GAS_URL を貼り直してください
+  // ※※ ここにあなたの GAS_URL を忘れずに貼り直してください ※※
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwdJbzaKh_hhpE_fQhf6l_JRBkZZghPFVoC1LbvHEans_sBl9zj7zIO1vKZAlFwHSU/exec";
   
   let ratings = {};
@@ -227,10 +226,9 @@
     el.innerText = score;
   }
 
-  // 手動で最新データを引っ張ってくる機能（トランシーバー通信）
   async function forceReload() {
     const btn = document.getElementById('reload-btn');
-    btn.classList.add('spin'); // ボタンをくるくる回す
+    btn.classList.add('spin');
     try {
       const res = await fetch(GAS_URL);
       const data = await res.json();
@@ -240,7 +238,6 @@
       updateRanking();
       updateHistory();
       
-      // 一瞬だけキラッとさせて完了を知らせる
       btn.innerText = "✨";
       setTimeout(() => { btn.innerText = "🔄"; }, 800);
     } catch(e) {
@@ -287,7 +284,14 @@
       const rL = ratings[loser] || 1500;
 
       const expectedW = 1 / (1 + Math.pow(10, (rL - rW) / 400));
-      const pointChange = Math.round(32 * (1 - expectedW));
+      let pointChange = Math.round(32 * (1 - expectedW));
+
+      // ジャイアントキリング（大物食い）ボーナス判定
+      let isGiantKilling = false;
+      if (rW < rL) { 
+        pointChange += 30; // 竹のルール：格上を倒すと+30ポイント
+        isGiantKilling = true;
+      }
 
       const randomWord = winWords[Math.floor(Math.random() * winWords.length)];
 
@@ -304,7 +308,11 @@
       ratings = data.ratings;
       matchHistory = data.history || [];
       
-      alert(`🔥🔥 下剋上達成！ 🔥🔥\n\n${winner} が ${loser} ${randomWord}\n${pointChange}ポイントを強奪！`);
+      if (isGiantKilling) {
+        alert(`⚡️⚡️ ジャイアントキリング！！ ⚡️⚡️\n\n格上撃破ボーナス獲得！\n${winner} が ${loser} ${randomWord}\n驚異の ${pointChange}ポイントを強奪！`);
+      } else {
+        alert(`🔥🔥 下剋上達成！ 🔥🔥\n\n${winner} が ${loser} ${randomWord}\n${pointChange}ポイントを強奪！`);
+      }
       
       document.getElementById('scoreA').innerText = '0';
       document.getElementById('scoreB').innerText = '0';
